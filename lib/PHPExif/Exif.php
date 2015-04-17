@@ -701,7 +701,7 @@ class Exif
 
         return $this;
     }
-    
+
     /**
      * Returns the colorspace, if it exists
      *
@@ -712,7 +712,7 @@ class Exif
         if (!isset($this->data[self::COLORSPACE])) {
             return false;
         }
-        
+
         return $this->data[self::COLORSPACE];
     }
 
@@ -728,7 +728,7 @@ class Exif
 
         return $this;
     }
-    
+
     /**
      * Returns the mimetype, if it exists
      *
@@ -739,7 +739,7 @@ class Exif
         if (!isset($this->data[self::MIMETYPE])) {
             return false;
         }
-        
+
         return $this->data[self::MIMETYPE];
     }
 
@@ -755,10 +755,10 @@ class Exif
 
         return $this;
     }
-    
+
     /**
      * Returns the filesize, if it exists
-     * 
+     *
      * @return int|boolean
      */
     public function getFileSize()
@@ -766,7 +766,7 @@ class Exif
         if (!isset($this->data[self::FILESIZE])) {
             return false;
         }
-        
+
         return $this->data[self::FILESIZE];
     }
 
