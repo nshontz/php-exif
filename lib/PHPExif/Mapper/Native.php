@@ -109,8 +109,24 @@ class Native implements MapperInterface
         self::SOFTWARE         => Exif::SOFTWARE,
         self::XRESOLUTION      => Exif::HORIZONTAL_RESOLUTION,
         self::YRESOLUTION      => Exif::VERTICAL_RESOLUTION,
-        self::GPSLATITUDE      => Exif::GPS,
-        self::GPSLONGITUDE     => Exif::GPS,
+        self::GPSLATITUDE      => self::GPSLATITUDE,
+        self::GPSLONGITUDE     => self::GPSLONGITUDE,
+    );
+
+    /**
+     * Maps an ExifTool field to a method to manipulate the data
+     * for the \PHPExif\Exif class
+     *
+     * @var array
+     */
+    protected $manipulators = array(
+        self::DATETIMEORIGINAL => 'convertDateTimeOriginal',
+        self::EXPOSURETIME     => 'convertExposureTime',
+        self::FOCALLENGTH      => 'convertFocalLength',
+        self::XRESOLUTION      => 'convertResolution',
+        self::YRESOLUTION      => 'convertResolution',
+        self::GPSLATITUDE      => 'extractGPSCoordinate',
+        self::GPSLONGITUDE     => 'extractGPSCoordinate',
     );
 
     /**
@@ -123,7 +139,6 @@ class Native implements MapperInterface
     public function mapRawData(array $data)
     {
         $mappedData = array();
-        $gpsData = array();
         foreach ($data as $field => $value) {
             if ($this->isSection($field) && is_array($value)) {
                 $subData = $this->mapRawData($value);
@@ -139,47 +154,24 @@ class Native implements MapperInterface
 
             $key = $this->map[$field];
 
-            // manipulate the value if necessary
-            switch ($field) {
-                case self::DATETIMEORIGINAL:
-                    $value = DateTime::createFromFormat('Y:m:d H:i:s', $value);
-                    break;
-                case self::EXPOSURETIME:
-                    // normalize ExposureTime
-                    // on one test image, it reported "10/300" instead of "1/30"
-                    list($counter, $denominator) = explode('/', $value);
-                    if (intval($counter) !== 1) {
-                        $denominator /= $counter;
-                    }
-                    $value = '1/' . round($denominator);
-                    break;
-                case self::FOCALLENGTH:
-                    $parts  = explode('/', $value);
-                    $value = (int)reset($parts) / (int)end($parts);
-                    break;
-                case self::XRESOLUTION:
-                case self::YRESOLUTION:
-                    $resolutionParts = explode('/', $value);
-                    $value = (int)reset($resolutionParts);
-                    break;
-                case self::GPSLATITUDE:
-                    $gpsData['lat'] = $this->extractGPSCoordinate($value);
-                    break;
-                case self::GPSLONGITUDE:
-                    $gpsData['lon'] = $this->extractGPSCoordinate($value);
-                    break;
+            // manipulate the data
+            if (array_key_exists($field, $this->manipulators)) {
+                $method = $this->manipulators[$field];
+                $value = $this->$method($value);
             }
 
             // set end result
             $mappedData[$key] = $value;
         }
 
-        if (count($gpsData) === 2) {
+        if (array_key_exists(self::GPSLATITUDE, $mappedData)) {
             $gpsLocation = sprintf(
                 '%s,%s',
-                (strtoupper($data['GPSLatitudeRef'][0]) === 'S' ? -1 : 1) * $gpsData['lat'],
-                (strtoupper($data['GPSLongitudeRef'][0]) === 'W' ? -1 : 1) * $gpsData['lon']
+                (strtoupper($data['GPSLatitudeRef'][0]) === 'S' ? -1 : 1) * $mappedData[self::GPSLATITUDE],
+                (strtoupper($data['GPSLongitudeRef'][0]) === 'W' ? -1 : 1) * $mappedData[self::GPSLONGITUDE]
             );
+            unset($mappedData[self::GPSLATITUDE]);
+            unset($mappedData[self::GPSLONGITUDE]);
             $mappedData[Exif::GPS] = $gpsLocation;
         }
 
@@ -195,6 +187,61 @@ class Native implements MapperInterface
     protected function isSection($field)
     {
         return (in_array($field, $this->sections));
+    }
+
+    /**
+     * Converts incoming ExifTool date to a DateTime object
+     *
+     * @param string $originalValue
+     * @return \DateTime
+     */
+    protected function convertDateTimeOriginal($originalValue)
+    {
+        return DateTime::createFromFormat('Y:m:d H:i:s', $originalValue);
+    }
+
+    /**
+     * Converts incoming exposure time to a sensible format
+     *
+     * @param string $originalValue
+     * @return string
+     */
+    protected function convertExposureTime($originalValue)
+    {
+        // normalize ExposureTime
+        // on one test image, it reported "10/300" instead of "1/30"
+        list($counter, $denominator) = explode('/', $originalValue);
+        if (intval($counter) !== 1) {
+            $denominator /= $counter;
+        }
+
+        return '1/' . round($denominator);
+    }
+
+    /**
+     * Converts focal length to a float value
+     *
+     * @param string $originalValue
+     * @return float
+     */
+    protected function convertFocalLength($originalValue)
+    {
+        $parts  = explode('/', $originalValue);
+
+        return ((int) reset($parts) / (int) end($parts));
+    }
+
+    /**
+     * Converts incoming resolution value to a sensible value
+     *
+     * @param string $originalValu)
+     * @return int
+     */
+    protected function convertResolution($originalValue)
+    {
+        $resolutionParts = explode('/', $originalValue);
+
+        return ((int) reset($resolutionParts));
     }
 
     /**
