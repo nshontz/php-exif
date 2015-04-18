@@ -86,14 +86,30 @@ class Exiftool implements MapperInterface
         self::YRESOLUTION              => Exif::VERTICAL_RESOLUTION,
         self::IMAGEWIDTH               => Exif::WIDTH,
         self::CAPTIONABSTRACT          => Exif::CAPTION,
-        self::GPSLATITUDE              => Exif::GPS,
-        self::GPSLONGITUDE             => Exif::GPS,
+        self::GPSLATITUDE              => self::GPSLATITUDE,
+        self::GPSLONGITUDE             => self::GPSLONGITUDE,
     );
 
     /**
      * @var bool
      */
     protected $numeric = true;
+
+    /**
+     * Maps an Exiftool field to a method to manipulate the data
+     * for the \PHPExif\Exif class
+     *
+     * @var array
+     */
+    protected $manipulators = array(
+        self::APERTURE                 => 'convertAperture',
+        self::APPROXIMATEFOCUSDISTANCE => 'convertFocusDistance',
+        self::CREATEDATE               => 'convertCreateDate',
+        self::EXPOSURETIME             => 'convertExposureTime',
+        self::FOCALLENGTH              => 'convertFocalLength',
+        self::GPSLATITUDE              => 'extractGPSCoordinates',
+        self::GPSLONGITUDE             => 'extractGPSCoordinates',
+    );
 
     /**
      * Mutator method for the numeric property
@@ -118,7 +134,6 @@ class Exiftool implements MapperInterface
     public function mapRawData(array $data)
     {
         $mappedData = array();
-        $gpsData = array();
         foreach ($data as $field => $value) {
             if (!array_key_exists($field, $this->map)) {
                 // silently ignore unknown fields
@@ -127,30 +142,10 @@ class Exiftool implements MapperInterface
 
             $key = $this->map[$field];
 
-            // manipulate the value if necessary
-            switch ($field) {
-                case self::APERTURE:
-                    $value = sprintf('f/%01.1f', $value);
-                    break;
-                case self::APPROXIMATEFOCUSDISTANCE:
-                    $value = sprintf('%1$sm', $value);
-                    break;
-                case self::CREATEDATE:
-                    $value = DateTime::createFromFormat('Y:m:d H:i:s', $value);
-                    break;
-                case self::EXPOSURETIME:
-                    $value = '1/' . round(1 / $value);
-                    break;
-                case self::FOCALLENGTH:
-                    $focalLengthParts = explode(' ', $value);
-                    $value = (int) reset($focalLengthParts);
-                    break;
-                case self::GPSLATITUDE:
-                    $gpsData['lat']  = $this->extractGPSCoordinates($value);
-                    break;
-                case self::GPSLONGITUDE:
-                    $gpsData['lon']  = $this->extractGPSCoordinates($value);
-                    break;
+            // manipulate the data
+            if (array_key_exists($field, $this->manipulators)) {
+                $method = $this->manipulators[$field];
+                $value = $this->$method($value);
             }
 
             // set end result
@@ -158,28 +153,106 @@ class Exiftool implements MapperInterface
         }
 
         // add GPS coordinates, if available
-        if (count($gpsData) === 2) {
-            $latitude = $gpsData['lat'];
-            $longitude = $gpsData['lon'];
-
-            if ($latitude !== false && $longitude !== false) {
-                $gpsLocation = sprintf(
-                    '%s,%s',
-                    (strtoupper($data['GPSLatitudeRef'][0]) === 'S' ? -1 : 1) * $latitude,
-                    (strtoupper($data['GPSLongitudeRef'][0]) === 'W' ? -1 : 1) * $longitude
-                );
-
-                $key = $this->map[self::GPSLATITUDE];
-
-                $mappedData[$key] = $gpsLocation;
-            } else {
-                unset($mappedData[$this->map[self::GPSLATITUDE]]);
-            }
-        } else {
-            unset($mappedData[$this->map[self::GPSLATITUDE]]);
-        }
+        $mappedData = $this->mapGPSData($data, $mappedData);
 
         return $mappedData;
+    }
+
+    /**
+     * Maps GPS data to the correct key, if such data exists
+     *
+     * @param array $data
+     * @param array $mappedData
+     * @return array
+     */
+    protected function mapGPSData(array $data, array $mappedData)
+    {
+        if (!array_key_exists(self::GPSLATITUDE, $mappedData)
+        || !array_key_exists(self::GPSLONGITUDE, $mappedData)) {
+            unset($mappedData[self::GPSLATITUDE]);
+            unset($mappedData[self::GPSLONGITUDE]);
+
+            return $mappedData;
+        }
+
+        $latitude = $mappedData[self::GPSLATITUDE];
+        $longitude = $mappedData[self::GPSLONGITUDE];
+
+        if ($latitude === false || $longitude === false) {
+            unset($mappedData[self::GPSLATITUDE]);
+            unset($mappedData[self::GPSLONGITUDE]);
+
+            return $mappedData;
+        }
+
+        $gpsLocation = sprintf(
+            '%s,%s',
+            (strtoupper($data['GPSLatitudeRef'][0]) === 'S' ? -1 : 1) * $latitude,
+            (strtoupper($data['GPSLongitudeRef'][0]) === 'W' ? -1 : 1) * $longitude
+        );
+
+        unset($mappedData[self::GPSLATITUDE]);
+        unset($mappedData[self::GPSLONGITUDE]);
+        $mappedData[Exif::GPS] = $gpsLocation;
+
+        return $mappedData;
+    }
+
+    /**
+     * Converts incoming aperture value to a sensible format
+     *
+     * @param string $originalValue
+     * @return string
+     */
+    protected function convertAperture($originalValue)
+    {
+        return sprintf('f/%01.1f', $originalValue);
+    }
+
+    /**
+     * Converts incoming focus distance value to a sensible format
+     *
+     * @param string $originalValue
+     * @return string
+     */
+    protected function convertFocusDistance($originalValue)
+    {
+        return sprintf('%1$sm', $originalValue);
+    }
+
+    /**
+     * Converts incoming Exiftool date to a DateTime object
+     *
+     * @param string $originalValue
+     * @return \DateTime
+     */
+    protected function convertCreateDate($originalValue)
+    {
+        return DateTime::createFromFormat('Y:m:d H:i:s', $originalValue);
+    }
+
+    /**
+     * Converts incoming exposure time to a sensible format
+     *
+     * @param string $originalValue
+     * @return string
+     */
+    protected function convertExposureTime($originalValue)
+    {
+        return '1/' . round(1 / $originalValue);
+    }
+
+    /**
+     * Converts focal length to a float value
+     *
+     * @param string $originalValue
+     * @return float
+     */
+    protected function convertFocalLength($originalValue)
+    {
+        $focalLengthParts = explode(' ', $originalValue);
+
+        return (int) reset($focalLengthParts);
     }
 
     /**

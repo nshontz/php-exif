@@ -114,7 +114,7 @@ class Native implements MapperInterface
     );
 
     /**
-     * Maps an Native field to a method to manipulate the data
+     * Maps a Native field to a method to manipulate the data
      * for the \PHPExif\Exif class
      *
      * @var array
