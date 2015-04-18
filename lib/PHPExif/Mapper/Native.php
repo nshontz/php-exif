@@ -164,16 +164,32 @@ class Native implements MapperInterface
             $mappedData[$key] = $value;
         }
 
-        if (array_key_exists(self::GPSLATITUDE, $mappedData)) {
-            $gpsLocation = sprintf(
-                '%s,%s',
-                (strtoupper($data['GPSLatitudeRef'][0]) === 'S' ? -1 : 1) * $mappedData[self::GPSLATITUDE],
-                (strtoupper($data['GPSLongitudeRef'][0]) === 'W' ? -1 : 1) * $mappedData[self::GPSLONGITUDE]
-            );
-            unset($mappedData[self::GPSLATITUDE]);
-            unset($mappedData[self::GPSLONGITUDE]);
-            $mappedData[Exif::GPS] = $gpsLocation;
+        $mappedData = $this->mapGPSData($data, $mappedData);
+
+        return $mappedData;
+    }
+
+    /**
+     * Maps GPS data to the correct key, if such data exists
+     *
+     * @param array $data
+     * @param array $mappedData
+     * @return array
+     */
+    protected function mapGPSData(array $data, array $mappedData)
+    {
+        if (!array_key_exists(self::GPSLATITUDE, $mappedData)) {
+            return $mappedData;
         }
+
+        $gpsLocation = sprintf(
+            '%s,%s',
+            (strtoupper($data['GPSLatitudeRef'][0]) === 'S' ? -1 : 1) * $mappedData[self::GPSLATITUDE],
+            (strtoupper($data['GPSLongitudeRef'][0]) === 'W' ? -1 : 1) * $mappedData[self::GPSLONGITUDE]
+        );
+        unset($mappedData[self::GPSLATITUDE]);
+        unset($mappedData[self::GPSLONGITUDE]);
+        $mappedData[Exif::GPS] = $gpsLocation;
 
         return $mappedData;
     }
