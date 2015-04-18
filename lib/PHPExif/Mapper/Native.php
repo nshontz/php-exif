@@ -78,7 +78,7 @@ class Native implements MapperInterface
     );
 
     /**
-     * Maps the ExifTool fields to the fields of
+     * Maps the Native fields to the fields of
      * the \PHPExif\Exif class
      *
      * @var array
@@ -114,7 +114,7 @@ class Native implements MapperInterface
     );
 
     /**
-     * Maps an ExifTool field to a method to manipulate the data
+     * Maps an Native field to a method to manipulate the data
      * for the \PHPExif\Exif class
      *
      * @var array
@@ -206,7 +206,7 @@ class Native implements MapperInterface
     }
 
     /**
-     * Converts incoming ExifTool date to a DateTime object
+     * Converts incoming Native date to a DateTime object
      *
      * @param string $originalValue
      * @return \DateTime
