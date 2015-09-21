@@ -250,7 +250,7 @@ class Native implements MapperInterface
     /**
      * Converts incoming resolution value to a sensible value
      *
-     * @param string $originalValu)
+     * @param string $originalValue
      * @return int
      */
     protected function convertResolution($originalValue)
