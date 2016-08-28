@@ -40,6 +40,7 @@ class Exif
     const ISO                   = 'iso';
     const JOB_TITLE             = 'jobTitle';
     const KEYWORDS              = 'keywords';
+    const HIERARCHICAL_SUBJECT  = 'hierarchicalSubject';
     const MIMETYPE              = 'MimeType';
     const ORIENTATION           = 'Orientation';
     const SOFTWARE              = 'software';
@@ -540,6 +541,34 @@ class Exif
     public function setKeywords($value)
     {
         $this->data[self::KEYWORDS] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Returns the hierarchical subject, if they/it exists
+     *
+     * @return array|boolean
+     */
+    public function getHierarchicalSubject()
+    {
+
+        if (!isset($this->data[self::HIERARCHICAL_SUBJECT])) {
+            return false;
+        }
+
+        return $this->data[self::HIERARCHICAL_SUBJECT];
+    }
+    
+    /**
+     * Sets the hierarchical subject
+     *
+     * @param array $value
+     * @return \PHPExif\Exif
+     */
+    public function setHierarchicalSubject($value)
+    {
+        $this->data[self::HIERARCHICAL_SUBJECT] = $value;
 
         return $this;
     }

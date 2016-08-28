@@ -42,6 +42,7 @@ class Exiftool implements MapperInterface
     const ISO                      = 'ExifIFD:ISO';
     const JOBTITLE                 = 'IPTC:By-lineTitle';
     const KEYWORDS                 = 'IPTC:Keywords';
+    const HIERARCHICALSUBJECT      = 'XMP-lr:HierarchicalSubject';
     const MIMETYPE                 = 'File:MIMEType';
     const MODEL                    = 'IFD0:Model';
     const ORIENTATION              = 'IFD0:Orientation';
@@ -78,6 +79,7 @@ class Exiftool implements MapperInterface
         self::ISO                      => Exif::ISO,
         self::JOBTITLE                 => Exif::JOB_TITLE,
         self::KEYWORDS                 => Exif::KEYWORDS,
+        self::HIERARCHICALSUBJECT      => Exif::HIERARCHICAL_SUBJECT,
         self::MIMETYPE                 => Exif::MIMETYPE,
         self::ORIENTATION              => Exif::ORIENTATION,
         self::SOFTWARE                 => Exif::SOFTWARE,
